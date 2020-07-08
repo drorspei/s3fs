@@ -1197,6 +1197,25 @@ class S3File(AbstractBufferedFile):
         return self.fs.url(self.path, **kwargs)
 
     def _fetch_range(self, start, end):
+        if start == 0 and end == self.size:
+            # If we're downloading the entire file,
+            # then it's better to use boto3 transfer manager.
+            # It automatically switches to multi-part
+            # for large files.
+            from io import BytesIO
+            from boto3.s3.inject import download_fileobj
+            stream = BytesIO()
+            download_fileobj(
+                self.fs.s3,
+                Bucket=self.bucket,
+                Key=self.key,
+                Fileobj=stream,
+                ExtraArgs={
+                    **version_id_kw(self.version_id),
+                    **(self.req_kw or {})
+                }
+            )
+            return stream.getvalue()
         return _fetch_range(self.fs.s3, self.bucket, self.key, self.version_id, start, end, req_kw=self.req_kw)
 
     def _upload_chunk(self, final=False):
