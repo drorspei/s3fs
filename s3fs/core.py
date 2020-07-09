@@ -1204,6 +1204,7 @@ class S3File(AbstractBufferedFile):
             # for large files.
             from io import BytesIO
             from boto3.s3.inject import download_fileobj
+            from boto3.s3.transfer import TransferConfig
             stream = BytesIO()
             download_fileobj(
                 self.fs.s3,
@@ -1213,7 +1214,8 @@ class S3File(AbstractBufferedFile):
                 ExtraArgs={
                     **version_id_kw(self.version_id),
                     **(self.req_kw or {})
-                }
+                },
+                Config=TransferConfig(max_concurrency=10)
             )
             return stream.getvalue()
         return _fetch_range(self.fs.s3, self.bucket, self.key, self.version_id, start, end, req_kw=self.req_kw)
